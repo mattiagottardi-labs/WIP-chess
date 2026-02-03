@@ -1,2 +1,10 @@
-This aims to become a working chess program. It has so far required approximately 5 hours of work. Currently the game works, although it is missing many key features such as
-en passant and check/checkmate checking, as well as the stall mechanic. Over the next few hours of work i plan on implementing a GUI.
+## WIP-chess
+This project aims to become a fully functioning multiplayer chess board to play with your friends. This has been in development for ~3h. I am not rushing and the main objective is to learn object oriented programming in C++ as well as implementing UI.
+
+## Current state:
+
+So far the logic is 70% there. The pieces know what their scope is and the functions are there to move and kill pieces, as well as to promote pawns. Enpassant and Castling will be implemented soon. The next things to implement are, in order:
+
+-missing logic (enpassant, castling, check, checkmate, stall).
+
+-UI
