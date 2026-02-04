@@ -63,7 +63,6 @@ bool Player::turn() {
 }
 
 void Player::selectPiece(std::pair<int,int> pos) {
-    // Corrected: no extra braces
     board[pos]->showPossibleMoves();
 
     std::cout << "Selected piece "
