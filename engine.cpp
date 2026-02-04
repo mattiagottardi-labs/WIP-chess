@@ -24,6 +24,7 @@ int main(){
     Player whitePlayer(false);
     Player blackPlayer(true);
     bool done=true;
+    game.gameOver = false;
     while(game.gameOver == false){
         while(done){
             done = whitePlayer.turn();

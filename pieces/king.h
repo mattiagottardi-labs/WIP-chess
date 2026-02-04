@@ -5,15 +5,16 @@
 #include <string>
 #include <map>
 #include <utility>
-#include "rook.h"
 #include "../game.h"
+class Rook; // forward declaration
 extern Game game;
+extern std::map<bool, King*> kings;
 class King : public Piece {
     public:
         King(std::pair<int,int> pos, bool col, bool addToActive = true);
         
         std::map<std::pair<int,int>,bool> scope() override;
-        void move(std::pair<int,int> &k) override;
+        void move(const std::pair<int,int> &k) override;
         bool canCastle(Rook* rook);
         void die() override;
         std::string getName() override;

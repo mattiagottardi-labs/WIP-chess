@@ -5,13 +5,13 @@
 #include <vector>
 #include <utility>   // std::pair
 #include <iostream>  // std::cout (optional, but you use it in move())
-
-class Piece;  // forward declaration
+class Piece; 
+class King; // forward declaration
 
 // Global containers (defined in piece.cpp)
 extern std::map<std::pair<int,int>, Piece*> board;
 extern std::vector<Piece*> activePieces;
-
+extern std::map<bool, class King*> kings;
 // Utility function (defined in piece.cpp)
 bool isValid(std::pair<int,int> a, bool color);
 
@@ -22,7 +22,7 @@ public:
     Piece(std::pair<int,int> pos, bool col, bool addToActive = true);
     std::string name{};
     std::pair<int,int> position{};
-    bool color{false};
+    bool color{};
     virtual void showPossibleMoves();
     virtual ~Piece() = default;
     virtual std::string getName();
@@ -30,8 +30,10 @@ public:
     virtual bool isInCheck(std::pair<int,int> pos);
     virtual void die();
     virtual bool isEmpty();
-    virtual void move(std::pair<int,int> &k);
+    virtual void move(const std::pair<int,int> &k);
     virtual bool isCapturable(bool color);
+    bool isChecking();
+    bool canCover();
 };
 
 #endif // PIECE_H

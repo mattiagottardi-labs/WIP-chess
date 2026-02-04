@@ -10,7 +10,7 @@ class Rook : public Piece {
     public:
         Rook(std::pair<int,int> pos, bool col, bool addToActive = true);
         std::map<std::pair<int,int>,bool> scope() override;
-        void move(std::pair<int,int> &k) override;
+        void move(const std::pair<int,int> &k) override;
         bool canCastle();
         std::string getName() override;
         const std::string name = "R";

@@ -11,7 +11,6 @@ Pawn::Pawn(std::pair<int,int> pos, bool col, bool addToActive) : Piece(pos, col,
 
 std::map<std::pair<int,int>,bool> Pawn::scope(){
     std::map<std::pair<int,int>, bool> res;
-    
     if(this->color == 0){ // White pawns move up
         if(movecount == 0 && position.second < 6 && board[{position.first, position.second + 1}]->isEmpty() && board[{position.first, position.second + 2}]->isEmpty()){
             res[{position.first, position.second + 2}] = true;
@@ -54,7 +53,7 @@ std::map<std::pair<int,int>,bool> Pawn::scope(){
     return res;
 }
 
-void Pawn::move(std::pair<int,int> &k){
+void Pawn::move(const std::pair<int,int> &k){
         if(scope()[k] == true) {
         board[this->position] = new Empty(this->position, 2, false);
         this->position = k; 

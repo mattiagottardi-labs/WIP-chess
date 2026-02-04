@@ -6,50 +6,75 @@
 
 Player::Player(bool c) : color(c) {}
 
-bool Player::turn(){
-            std::cout << "Player " << (color ? "Black" : "White") << "'s turn. Enter piece position to move (x y): ";
-            int x, y;
-            std::cin >> x >> y;
-            std::pair<int,int> pos = {x,y};
-            if(board.find(pos) != board.end() && !board[pos]->isEmpty() && board[pos]->color == color 
-            && board[pos]->scope().size() > 0){
-                selectPiece(pos);
-                std::cout << "Enter char to change piece or enter target position to move to (x y): ";
-                int tx , ty;
-                std::cin >> tx >> ty;
-                std::pair<int,int> target = {tx,ty};
-                if(board[pos]->scope()[target]){
-                    if(!board[target]->isEmpty()){
-                        board[target]->die();
-                    }
-                    board[pos]->move(target);
-                    return false;
-                } else {
-                    std::cout << "Invalid move. Try again.\n";
-                    if(std::cin.fail()){
-                        std::cin.clear();
-                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    }
-                    return true;  
-                }
-            } else {
-                std::cout << "Invalid piece selection. Try again.\n";
-                if(std::cin.fail()){
-                        std::cin.clear();
-                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                }
-                return true;
-            }       
+bool Player::turn() {
+    std::cout << "\nturn count: " << this->turncount++ << "\n";
+
+    if (kingInCheck()) {
+        std::cout << "Your king is in check! You must move to cover it.\n";
+    }
+
+    std::cout << "Player " << (color ? "Black" : "White")
+              << "'s turn. Enter piece position to move (x y): ";
+
+    int x, y;
+    std::cin >> x >> y;
+    std::pair<int,int> pos = {x, y};
+
+    // Validate piece selection
+    auto it = board.find(pos);
+    if (it != board.end() && it->second && !it->second->isEmpty()
+        && it->second->color == color && !it->second->scope().empty()) {
+
+        selectPiece(pos);
+
+        std::cout << "Enter target position to move to (x y): ";
+        int tx, ty;
+        std::cin >> tx >> ty;
+        std::pair<int,int> target = {tx, ty};
+        auto piece = it->second;
+
+        auto moves = piece->scope();
+
+        // Check if target is in scope
+        if (moves.count(target) && moves.at(target)) {
+
+            // Capture if needed
+            if (board.count(target) && board[target] && !board[target]->isEmpty()) {
+                board[target]->die();
+            }
+
+            it->second->move(target);
+            return false;
         }
 
-void Player::selectPiece(std::pair<int,int> pos){
-    board[{pos}]->showPossibleMoves();
+        std::cout << "Invalid move. Try again.\n";
+    } 
+    else {
+        std::cout << "Invalid piece selection. Try again.\n";
+    }
+
+    // Clear input if needed
+    if (std::cin.fail()) {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+
+    return true;
 }
 
-bool Player::kingInCheck(bool color){
-    for(auto &piece : activePieces){
-        if(piece->getName()[0] == 'K' && piece->color == color){
-            return piece->isInCheck({piece->position.first, piece->position.second});
+void Player::selectPiece(std::pair<int,int> pos) {
+    // Corrected: no extra braces
+    board[pos]->showPossibleMoves();
+
+    std::cout << "Selected piece "
+              << (board[pos]->canCover() ? "can" : "cannot")
+              << " cover the king.\n";
+}
+
+bool Player::kingInCheck() {
+    for (auto &piece : activePieces) {
+        if (piece->getName()[0] == 'K' && piece->color == this->color) {
+            return piece->isInCheck(piece->position);
         }
     }
     return false;

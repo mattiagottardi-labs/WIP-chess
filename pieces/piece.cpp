@@ -1,10 +1,12 @@
 #include "piece.h"
 #include "empty.h"
 #include "king.h"
+#include "../player.h"
 #include <iostream>
 #include "../game.h"
 std::map<std::pair<int,int>, Piece*> board;
 std::vector<Piece*> activePieces;
+std::map<bool, King*> kings;
 extern Game game;
 Piece::Piece() {}
 
@@ -26,7 +28,7 @@ std::string Piece::getName() {
     return this->name;
 }
 
-void Piece::move(std::pair<int,int> &k) {
+void Piece::move(const std::pair<int,int> &k) {
     if(scope()[k] == true) {
         board[this->position] = new Empty(this->position, 2, false);
         this->position = k; 
@@ -67,5 +69,38 @@ void Piece::showPossibleMoves() {
 }
 
 bool Piece::isInCheck(std::pair<int,int> pos) {
+    return false;
+}
+
+bool Piece::isChecking() {
+    for(auto it = scope().begin(); it != scope().end(); ++it) {
+        if(board[it->first]->getName()[0] == 'K' && board[it->first]->color != this->color){ {
+            return true;
+            break;
+        }
+        }
+    }
+    return false;
+}
+
+bool Piece::canCover(){
+    auto king = kings[this->color];
+    auto initialPos = this->position;
+    if(king->isInCheck(king->position) == false){
+        return true; // No need to cover if king is not in check
+    }
+    for(auto it = scope().begin(); it != scope().end(); ++it) {
+        if(scope()[it->first]){
+            this->move(it->first);  // Try the move
+            
+            bool kingIsSafe = !king->isInCheck(king->position); 
+            
+            this->move(initialPos);  // Always move back
+            
+            if(kingIsSafe){
+                return true;  // Found a move that protects the king
+            }
+        }
+    }
     return false;
 }

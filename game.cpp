@@ -11,6 +11,7 @@
 #include "pieces/empty.h"
 Game game;
 void Game::initGame() {
+    std::cout << "Initializing chess board...\n";
     board[{0,0}] = new Rook({0,0}, 0, true);
     board[{1,0}] = new Knight({1,0}, 0, true);
     board[{2,0}] = new Bishop({2,0}, 0, true);

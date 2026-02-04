@@ -14,7 +14,7 @@ class Pawn : public Piece {
         int movecount{0};
         Pawn(std::pair<int,int> pos, bool col, bool addToActive = true);
         std::map<std::pair<int,int>,bool> scope() override;
-        void move(std::pair<int,int> &k) override;
+        void move(const std::pair<int,int> &k) override;
         void upgrade();
         std::string getName() override;
         const std::string name = "P";

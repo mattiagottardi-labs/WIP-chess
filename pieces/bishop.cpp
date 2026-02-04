@@ -1,5 +1,6 @@
 #include "bishop.h"
 #include "empty.h"
+#include "../player.h"
 #include <iostream>
 
 Bishop::Bishop(std::pair<int,int> pos, bool col, bool addToActive) : Piece(pos, col, addToActive) {}
