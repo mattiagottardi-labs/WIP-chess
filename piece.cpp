@@ -9,201 +9,88 @@
 
 
 
-std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope to calculate threthened squares
+std::vector<std::pair<char,int>> Piece::checkfree_scope(){
     std::vector<std::pair<char,int>> res;
     switch (type){
         case PieceType::Pawn: {
-            // Pawns attack diagonally (different from movement)
-            int direction = color ? 1 : -1;  // white moves up, black down
-            // Left diagonal attack
-            if (pos.first > 'a' && pos.second + direction > 1 && pos.second + direction <= 8) {
-                auto it = gS->board.find({char(pos.first - 1), pos.second + direction});
-                if(it != gS->board.end() && it->second.get()->color != this->color){
-                    res.push_back({char(pos.first - 1), pos.second + direction});
-                }
-                
-            }
-            // Right diagonal attack
-            if (pos.first < 'h' && pos.second + direction >= 1 && pos.second + direction <= 8) {
-                auto it = gS->board.find({char(pos.first + 1), pos.second + direction});
-                if(it != nullptr && it->second.get()->color != this->color){
-                    res.push_back({char(pos.first + 1), pos.second + direction});
-                }
-            }
+            int direction = color ? 1 : -1;
+            if (pos.first > 'a' && pos.second + direction >= 1 && pos.second + direction <= 8)
+                res.push_back({char(pos.first - 1), pos.second + direction});
+            if (pos.first < 'h' && pos.second + direction >= 1 && pos.second + direction <= 8)
+                res.push_back({char(pos.first + 1), pos.second + direction});
             break;
-
         }
         case PieceType::King: {
-            // Check all 8 surrounding squares (one square in each direction)
-            for(int df = -1; df <= 1; df++) {       // file offset: -1, 0, +1
-                for(int dr = -1; dr <= 1; dr++) {   // rank offset: -1, 0, +1
-                    // Skip current position
+            for(int df = -1; df <= 1; df++) {
+                for(int dr = -1; dr <= 1; dr++) {
                     if(df == 0 && dr == 0) continue;
-                    
                     char newFile = pos.first + df;
                     int newRank = pos.second + dr;
-                    
-                    // Check bounds
-                    if(newFile >= 'a' && newFile <= 'h' && 
-                    newRank >= 1 && newRank <= 8) {
+                    if(newFile >= 'a' && newFile <= 'h' && newRank >= 1 && newRank <= 8)
                         res.push_back({newFile, newRank});
-                    }
                 }
             }
             break;
         }
-        case PieceType::Bishop:{
-            std::vector<std::pair<int,int>> directions = {{1,1}, {1,-1}, {-1,1}, {-1,-1}};
-            for(auto [df, dr] : directions) {   
+        case PieceType::Bishop: {
+            std::vector<std::pair<int,int>> directions = {{1,1},{1,-1},{-1,1},{-1,-1}};
+            for(auto [df, dr] : directions) {
                 char currFile = pos.first;
-                int currRank = pos.second;   
-                // Keep moving in this diagonal direction until hitting board edge or piece
+                int  currRank = pos.second;
                 while(true) {
-                    
                     currFile += df;
                     currRank += dr;
-                    
-                    // Check if we're still on the board
-                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) {
-                        break;  // Off the board
-                    }
-                    
-                    std::pair<char, int> currPos = {currFile, currRank};
-                    
-                    // Check if square is occupied
-                    auto it = gS->board.find(currPos);
-                    if(it != gS->board.end()) {
-                        //square is occupied!! check if capturable
-                        Piece* pieceAtSquare = it->second.get();
-                        if(pieceAtSquare->color == this->color) {
-                        // Same color - blocked, can't move here
-                            break;
-                        } else {
-                        // Opposite color - can capture, then stop
-                        res.push_back(currPos);
-                        break;
-                    }
-                    }
-                    
-                    // Square is empty - add it and continue
-                    res.push_back(currPos);
+                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) break;
+                    res.push_back({currFile, currRank});
+                    if(gS->board.find({currFile, currRank}) != gS->board.end()) break; // blocked
                 }
             }
-                break;
-            }
-
-        case PieceType::Rook:{
-            std::vector<std::pair<int,int>> directions = {{1,0}, {0,-1}, {-1,0}, {0,1}};
-                
-            for(auto [df,dr] : directions){
-                char currFile = this->pos.first;
-                int  currRank = this->pos.second;
-                while(true){
-                    
-                    currFile += df;
-                    currRank += dr;
-
-                    // Check if we're still on the board
-                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) {
-                        break;  // Off the board
-                    }
-
-                    std::pair<char, int> currPos = {currFile, currRank};
-                    auto it = gS->board.find(currPos);
-                    // if it finds a piece it should consider it capturable but stop there
-                    if(it != gS->board.end()) {
-                        if(it->second.get()->color != this->color){res.push_back(currPos);}
-                        break;
-                    }
-                    
-                    // Square is empty - add it and continue
-                    res.push_back(currPos);
-
-                    }
-                }
-                break;
-            }
-            case PieceType::Knight:{
-                std::vector<std::pair<int,int>> directions = {{2,1},{2,-1},{-2,1},{-2,-1},{1,2},{1,-2},{-1,2},{-1,-2}};
-                for(auto [df,dr] : directions){
-                    char currFile = this->pos.first;
-                    int  currRank = this->pos.second;
-                    currFile += df;
-                    currRank += dr;
-                    // Check if we're still on the board
-                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) {
-                        // Off the board
-                    }else{
-                    std::pair<char, int> currPos = {currFile, currRank};              
-                    // Square is empty - add it and continue
-                    res.push_back(currPos);
-                    }
-                    }
-                    break;
-                }
-            case PieceType::Queen:{
-                std::vector<std::pair<int,int>> directions = {{1,0}, {0,-1}, {-1,0}, {0,1}};
-                for( auto [df,dr] : directions){
-                    char currFile = this->pos.first;
-                    int  currRank = this->pos.second;
-                while(true){
-                    
-                    currFile += df;
-                    currRank += dr;
-
-                    // Check if we're still on the board
-                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) {
-                        break;  // Off the board
-                    }
-
-                    std::pair<char, int> currPos = {currFile, currRank};
-                    auto it = gS->board.find(currPos);
-                    // if it finds a piece it should consider it capturable but stop there
-                    if(it != gS->board.end()) {
-                        res.push_back(currPos);
-                        break;
-                    }
-                    
-                    // Square is empty - add it and continue
-                    res.push_back(currPos);
-                    }
-                }
-                    directions = {{1,1}, {1,-1}, {-1,1}, {-1,-1}};
-                    for(auto [df,dr] : directions){
-                    char currFile = this->pos.first;
-                    int  currRank = this->pos.second;
-                    while(true){
-                    
-                    currFile += df;
-                    currRank += dr;
-
-                    // Check if we're still on the board
-                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) {
-                        break;  // Off the board
-                    }
-
-                    std::pair<char, int> currPos = {currFile, currRank};
-                    auto it = gS->board.find(currPos);
-                    // if it finds a piece it should consider it capturable but stop there
-                    if(it != gS->board.end()) {
-                        if(it->second.get()->color != this->color){res.push_back(currPos);}
-                        break;
-                    }
-                    
-                    // Square is empty - add it and continue
-                    res.push_back(currPos);
-
-                    }
-                    }
-                    break;
-                }
-                default:{
-                    break;
-                }
-                break;
-            }
-        return res;
+            break;
         }
+        case PieceType::Rook: {
+            std::vector<std::pair<int,int>> directions = {{1,0},{0,-1},{-1,0},{0,1}};
+            for(auto [df, dr] : directions) {
+                char currFile = pos.first;
+                int  currRank = pos.second;
+                while(true) {
+                    currFile += df;
+                    currRank += dr;
+                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) break;
+                    res.push_back({currFile, currRank});
+                    if(gS->board.find({currFile, currRank}) != gS->board.end()) break; // blocked
+                }
+            }
+            break;
+        }
+        case PieceType::Knight: {
+            std::vector<std::pair<int,int>> directions = {{2,1},{2,-1},{-2,1},{-2,-1},{1,2},{1,-2},{-1,2},{-1,-2}};
+            for(auto [df, dr] : directions) {
+                char currFile = pos.first + df;
+                int  currRank = pos.second + dr;
+                if(currFile >= 'a' && currFile <= 'h' && currRank >= 1 && currRank <= 8)
+                    res.push_back({currFile, currRank});
+            }
+            break;
+        }
+        case PieceType::Queen: {
+            std::vector<std::pair<int,int>> directions = {{1,0},{0,-1},{-1,0},{0,1},{1,1},{1,-1},{-1,1},{-1,-1}};
+            for(auto [df, dr] : directions) {
+                char currFile = pos.first;
+                int  currRank = pos.second;
+                while(true) {
+                    currFile += df;
+                    currRank += dr;
+                    if(currFile < 'a' || currFile > 'h' || currRank < 1 || currRank > 8) break;
+                    res.push_back({currFile, currRank});
+                    if(gS->board.find({currFile, currRank}) != gS->board.end()) break; // blocked
+                }
+            }
+            break;
+        }
+        default: break;
+    }
+    return res;
+}
 std::string Piece::getName(){
     switch (type){
         case PieceType::Bishop:{

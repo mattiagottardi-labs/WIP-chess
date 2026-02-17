@@ -25,7 +25,7 @@ void GameState::init() {
     board[{'f', 1}] = std::make_unique<Piece>(Piece::PieceType::Bishop, true, std::make_pair('f', 1), this);
     board[{'g', 1}] = std::make_unique<Piece>(Piece::PieceType::Knight, true, std::make_pair('g', 1), this);
     board[{'h', 1}] = std::make_unique<Piece>(Piece::PieceType::Rook, true, std::make_pair('h', 1), this);
-
+    whiteKingPosition = std::make_pair('e', 1);
     // Pawns (rank 2 for white, rank 7 for black)
     for(int i = 0; i < 8; i++) {
         char file = static_cast<char>('a' + i);
@@ -42,33 +42,34 @@ void GameState::init() {
     board[{'f', 8}] = std::make_unique<Piece>(Piece::PieceType::Bishop, false, std::make_pair('f', 8), this);
     board[{'g', 8}] = std::make_unique<Piece>(Piece::PieceType::Knight, false, std::make_pair('g', 8), this);
     board[{'h', 8}] = std::make_unique<Piece>(Piece::PieceType::Rook, false, std::make_pair('h', 8), this);
+    blackKingPosition =  std::make_pair('e', 8);
 }
 
 void GameState::printBoard() {
-    std::cout << "  a b c d e f g h" << std::endl;
+    std::cout << "   a   b   c   d   e   f   g   h" << std::endl;
     for (int i = 8; i >= 1; --i) {
         std::cout << i << " ";
         for (char j = 'a'; j <= 'h'; ++j) {
             auto it = board.find({j, i});
             if (it != board.end()) {
-                std::cout << it->second->getName() << " "; // Print the first letter of the piece name
+                std::cout <<" "<< it->second->getName() << " "; // Print the first letter of the piece name
             } else {
-                std::cout << " . "; // Empty square
+                std::cout << " .  "; // Empty square
             }
         }
-        std::cout << " " << i << std::endl;
+        std::cout << " " << i << "\n\n";
     }
-    std::cout << "  a b c d e f g h" << std::endl;
+    std::cout << "   a   b   c   d   e   f   g   h" << std::endl;
 }
 
 void GameState::updateAttacking(bool color) {
     if (color) {
         white_attacking.clear();
         for (auto& piece : whitePieces) {
-            std::cout << "  checkfree_scope for white piece at: " 
-                      << piece->pos.first << piece->pos.second << std::flush;
+            /*std::cout << "  checkfree_scope for white piece at: " 
+                      << piece->pos.first << piece->pos.second << std::flush;*/
             auto scope = piece->checkfree_scope();
-            std::cout << " -> done (" << scope.size() << " squares)" << std::endl;
+            //std::cout << " -> done (" << scope.size() << " squares)" << std::endl; 
             for (auto pos : scope) {
                 white_attacking.push_back(pos);
             }
@@ -76,10 +77,9 @@ void GameState::updateAttacking(bool color) {
     } else {
         black_attacking.clear();
         for (auto& piece : blackPieces) {
-            std::cout << "  checkfree_scope for black piece at: " 
-                      << piece->pos.first << piece->pos.second << std::flush;
+            //std::cout << "  checkfree_scope for black piece at:" << piece->pos.first << piece->pos.second << std::flush;
             auto scope = piece->checkfree_scope();
-            std::cout << " -> done (" << scope.size() << " squares)" << std::endl;
+            //std::cout << " -> done (" << scope.size() << " squares)" << std::endl;
             for (auto pos : scope) {
                 black_attacking.push_back(pos);
             }

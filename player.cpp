@@ -85,6 +85,17 @@ void Player::movePiece(Piece* piece, std::pair<char, int> newPos) {
 bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
     auto oldPos = piece->pos;
 
+    // Color checks
+    if (piece->color != this->color) return false; // can't move opponent's piece
+
+    auto destIt = ga->board.find(canPos);
+    if (destIt != ga->board.end() && destIt->second->color == this->color) 
+        return false; // can't capture own piece
+
+    bool isKing = (piece->type == Piece::PieceType::King);
+    auto& kingPos = color ? ga->whiteKingPosition : ga->blackKingPosition;
+    auto savedKingPos = kingPos;
+
     // Save captured piece
     std::unique_ptr<Piece> captured = nullptr;
     auto captureIt = ga->board.find(canPos);
@@ -95,12 +106,14 @@ bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
 
     // Safe find 
     auto pieceIt = ga->board.find(oldPos);
-    if (pieceIt == ga->board.end()) return false; // ← guard against bad state
+    if (pieceIt == ga->board.end()) return false;
 
     std::unique_ptr<Piece> temp = std::move(pieceIt->second);
     ga->board.erase(pieceIt);
     temp->pos = canPos;
     ga->board[canPos] = std::move(temp);
+
+    if (isKing) kingPos = canPos;
 
     ga->updatePieces();
     ga->updateAttacking(true);
@@ -116,54 +129,58 @@ bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
 
     if (captured) ga->board[canPos] = std::move(captured);
 
+    kingPos = savedKingPos;
+
     ga->updatePieces();
     ga->updateAttacking(true);
     ga->updateAttacking(false);
 
     return !inCheck;
 }
+
+
 std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
-    std::vector<std::pair<char,int>> res;
-    std::vector<std::pair<char,int>> res2;
-    
-    res = piece->checkfree_scope();
-    // Get attack/movement scope (for most pieces, this is both)
-     
-    // Pawns: add forward movement (separate from diagonal attacks)
-    if(piece->type == Piece::PieceType::Pawn) {
-        int direction = color ? 1 : -1;  // white goes up (+1), black goes down (-1)
+    std::vector<std::pair<char,int>> candidates;
+    std::vector<std::pair<char,int>> legal;
+
+    if (piece->type == Piece::PieceType::Pawn) {
+        int direction = color ? 1 : -1;
+
+        // Diagonal captures — only if enemy piece is present
+        for (auto& pos : piece->checkfree_scope()) {
+            auto it = ga->board.find(pos);
+            if (it != ga->board.end() && it->second->color != this->color)
+                candidates.push_back(pos);
+        }
+
         // One square forward
-        std::pair<char, int> oneForward = {piece->pos.first, piece->pos.second + direction};
-        
-        // Check boundaries and if square is empty
-        if(oneForward.second >= 1 && oneForward.second <= 8 && ga->isEmpty(oneForward)) {
-            res.push_back(oneForward);
-            
-            // Two squares forward (only if hasn't moved and one forward is clear)
-            if(!piece->hasMoved) {
-                std::pair<char, int> twoForward = {piece->pos.first, piece->pos.second + (2 * direction)};
-                
-                if(twoForward.second >= 1 && twoForward.second <= 8 && ga->isEmpty(twoForward)) {
-                    res.push_back(twoForward);
-                }
+        std::pair<char,int> oneForward = {piece->pos.first, piece->pos.second + direction};
+        if (oneForward.second >= 1 && oneForward.second <= 8 && ga->isEmpty(oneForward)) {
+            candidates.push_back(oneForward);
+            // Two squares forward
+            if (!piece->hasMoved) {
+                std::pair<char,int> twoForward = {piece->pos.first, piece->pos.second + (2 * direction)};
+                if (twoForward.second >= 1 && twoForward.second <= 8 && ga->isEmpty(twoForward))
+                    candidates.push_back(twoForward);
             }
         }
-    }
-
-  
-    if(res.size() == 0){
-        return {};
-    }
-    // Filter out moves that would put own king in check
-    for(auto it : res) {
-        if(validateMove(piece, it)) {
-            res2.push_back(it);
+    } else {
+        // Non-pawns: filter out squares occupied by friendly pieces
+        for (auto& pos : piece->checkfree_scope()) {
+            auto it = ga->board.find(pos);
+            if (it == ga->board.end() || it->second->color != this->color)
+                candidates.push_back(pos);
         }
     }
-    
-    return res2;
-}
 
+    // Filter out moves that leave own king in check
+    for (auto& pos : candidates) {
+        if (validateMove(piece, pos))
+            legal.push_back(pos);
+    }
+
+    return legal;
+}
 /* PLAYER TURN LOGIC:
 
     player inserts a position, program must check:
@@ -189,8 +206,8 @@ Player::TurnResult Player::turn() {
     if(isOutOfMoves() && !ga->isInCheck(color)){
         return TurnResult::Stalemate;
     }
-
-    for (auto* piece : ga->whitePieces) {
+    std::vector<Piece*> pieces = color ? ga->whitePieces : ga->blackPieces;
+    for (auto* piece : pieces) {
     std::cout << "Piece: " << piece->pos.first << piece->pos.second << std::flush;
     auto moves = getRealScope(piece);
     std::cout << " -> " << moves.size() << " moves" << std::endl;
@@ -202,11 +219,12 @@ Player::TurnResult Player::turn() {
 
     std::cout << (color ? "White" : "Black") << " Player's turn.\n";
     std::string stat;
-    std::cout<<"Insert re if you wish to resign: \n";
+    std::cout<<"Insert ok if you wish to continue, or re if you wish to resign: \n";
     std::cin >> stat;
-    if(stat == "re"){
+    if(stat == "re" || stat == "resign" || stat == "RESIGN" || stat == "RE"){
         return TurnResult::Resign;
     }else{
+        std::cout << "Select a Piece! \n";
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
@@ -227,7 +245,7 @@ Player::TurnResult Player::turn() {
 
         if (!piece->scope.empty()) break;
 
-        std::cout << "Invalid piece choice\n";
+        std::cout << "Invalid piece choice, has no moves\n";
     }
 
     // --- CASTLING OPTIONS ---
@@ -293,60 +311,52 @@ Player::TurnResult Player::turn() {
 bool Player::canCastleLeft() {
     // 1. Check rook exists and is unmoved
     auto rookPos = color ? std::make_pair('a', 1) : std::make_pair('a', 8);
-    auto it = ga->board.find(rookPos);
-    if (it == ga->board.end()) return false;
-
-    Piece* leftRook = it->second.get();
+    auto rookIt = ga->board.find(rookPos);
+    if (rookIt == ga->board.end()) return false;
+    Piece* leftRook = rookIt->second.get();
     if (leftRook->type != Piece::PieceType::Rook || leftRook->hasMoved)
         return false;
 
     // 2. Check king exists and is unmoved
     auto kingPos = color ? ga->whiteKingPosition : ga->blackKingPosition;
-    Piece* king = ga->board.at(kingPos).get();
+    auto kingIt = ga->board.find(kingPos);
+    if (kingIt == ga->board.end()) return false;
+    Piece* king = kingIt->second.get();
     if (king->hasMoved) return false;
 
-    // 3. Required empty squares
-    char b = 'b', c = 'c', d = 'd';
+    // 3. Required empty squares (b, c, d must all be clear for queenside)
     int rank = color ? 1 : 8;
-
-    if (!ga->isEmpty({b, rank}) ||
-        !ga->isEmpty({c, rank}) ||
-        !ga->isEmpty({d, rank}))
+    if (!ga->isEmpty({'b', rank}) ||
+        !ga->isEmpty({'c', rank}) ||
+        !ga->isEmpty({'d', rank}))
         return false;
 
-    // 4. King cannot pass through check
-    if (!validateMove(king, {d, rank})) return false;
-    if (!validateMove(king, {c, rank})) return false;
+    // 4. King cannot pass through check (king passes through d and lands on c)
+    if (!validateMove(king, {'d', rank})) return false;
+    if (!validateMove(king, {'c', rank})) return false;
 
     return true;
 }
 
 bool Player::canCastleRight() {
-    // 1. Check rook exists and is unmoved
     auto rookPos = color ? std::make_pair('h', 1) : std::make_pair('h', 8);
-    auto it = ga->board.find(rookPos);
-    if (it == ga->board.end()) return false;
-
-    Piece* rightRook = it->second.get();
+    auto rookIt = ga->board.find(rookPos);
+    if (rookIt == ga->board.end()) return false;
+    Piece* rightRook = rookIt->second.get();
     if (rightRook->type != Piece::PieceType::Rook || rightRook->hasMoved)
         return false;
 
-    // 2. Check king exists and is unmoved
     auto kingPos = color ? ga->whiteKingPosition : ga->blackKingPosition;
-    Piece* king = ga->board.at(kingPos).get();
+    auto kingIt = ga->board.find(kingPos);          // ← safe lookup
+    if (kingIt == ga->board.end()) return false;    // ← guard instead of throw
+    Piece* king = kingIt->second.get();
     if (king->hasMoved) return false;
 
-    // 3. Required empty squares
-    char f = 'f', g = 'g';
     int rank = color ? 1 : 8;
+    if (!ga->isEmpty({'f', rank}) || !ga->isEmpty({'g', rank})) return false;
 
-    if (!ga->isEmpty({f, rank}) ||
-        !ga->isEmpty({g, rank}))
-        return false;
-
-    // 4. King cannot pass through check
-    if (!validateMove(king, {f, rank})) return false;
-    if (!validateMove(king, {g, rank})) return false;
+    if (!validateMove(king, {'f', rank})) return false;
+    if (!validateMove(king, {'g', rank})) return false;
 
     return true;
 }
