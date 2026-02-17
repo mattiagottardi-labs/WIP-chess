@@ -77,7 +77,7 @@ void Player::movePiece(Piece* piece, std::pair<char, int> newPos) {
     }
     
     // Update game state
-    ga->updatePieces(this->color);
+    ga->updatePieces();
     ga->updateAttacking(this->color);
     ga->updateAttacking(!this->color);  // Update opponent's attacking too
 }
@@ -85,50 +85,53 @@ void Player::movePiece(Piece* piece, std::pair<char, int> newPos) {
 bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
     auto oldPos = piece->pos;
 
-    // Save captured piece if any
-    Piece* captured = nullptr;
-    auto it = ga->board.find(canPos);
-    if (it != ga->board.end()) {
-        captured = it->second.get();
-        ga->board.erase(it);
+    // Save captured piece
+    std::unique_ptr<Piece> captured = nullptr;
+    auto captureIt = ga->board.find(canPos);
+    if (captureIt != ga->board.end()) {
+        captured = std::move(captureIt->second);
+        ga->board.erase(captureIt);
     }
 
-    // Move piece
-    piece->pos = canPos;
+    // Safe find 
+    auto pieceIt = ga->board.find(oldPos);
+    if (pieceIt == ga->board.end()) return false; // ← guard against bad state
 
-    // Recompute both attack maps
+    std::unique_ptr<Piece> temp = std::move(pieceIt->second);
+    ga->board.erase(pieceIt);
+    temp->pos = canPos;
+    ga->board[canPos] = std::move(temp);
+
+    ga->updatePieces();
     ga->updateAttacking(true);
     ga->updateAttacking(false);
-
-    // Check if our king is in check
     bool inCheck = ga->isInCheck(color);
 
-    // Restore piece position
-    piece->pos = oldPos;
+    // Undo
+    auto undoIt = ga->board.find(canPos);
+    std::unique_ptr<Piece> movedBack = std::move(undoIt->second);
+    ga->board.erase(undoIt);
+    movedBack->pos = oldPos;
+    ga->board[oldPos] = std::move(movedBack);
 
-    // Restore captured piece
-    if (captured) {
-        ga->board[canPos] = std::unique_ptr<Piece>(captured);
-    }
+    if (captured) ga->board[canPos] = std::move(captured);
 
-    // Restore attack maps
+    ga->updatePieces();
     ga->updateAttacking(true);
     ga->updateAttacking(false);
 
     return !inCheck;
 }
-
 std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
     std::vector<std::pair<char,int>> res;
     std::vector<std::pair<char,int>> res2;
     
-    // Get attack/movement scope (for most pieces, this is both)
     res = piece->checkfree_scope();
-    
+    // Get attack/movement scope (for most pieces, this is both)
+     
     // Pawns: add forward movement (separate from diagonal attacks)
     if(piece->type == Piece::PieceType::Pawn) {
         int direction = color ? 1 : -1;  // white goes up (+1), black goes down (-1)
-        
         // One square forward
         std::pair<char, int> oneForward = {piece->pos.first, piece->pos.second + direction};
         
@@ -146,7 +149,11 @@ std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
             }
         }
     }
-    
+
+  
+    if(res.size() == 0){
+        return {};
+    }
     // Filter out moves that would put own king in check
     for(auto it : res) {
         if(validateMove(piece, it)) {
@@ -173,12 +180,23 @@ std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
 */
 
 Player::TurnResult Player::turn() {
+
+    ga->updatePieces();
+
     if(isOutOfMoves() && ga->isInCheck(color)){
         return TurnResult::Checkmate;
     }
     if(isOutOfMoves() && !ga->isInCheck(color)){
         return TurnResult::Stalemate;
     }
+
+    for (auto* piece : ga->whitePieces) {
+    std::cout << "Piece: " << piece->pos.first << piece->pos.second << std::flush;
+    auto moves = getRealScope(piece);
+    std::cout << " -> " << moves.size() << " moves" << std::endl;
+    }
+    
+
     std::pair<char,int> pos;
     Piece* piece;
 
@@ -349,9 +367,10 @@ void Player::castle(bool left){
 bool Player::isOutOfMoves() {
     auto& pieces = color ? ga->whitePieces : ga->blackPieces;
     for (auto& p : pieces) {
-        Piece* piece = p.get();
-        if (!getRealScope(piece).size() > 0){return false;}
+        if (getRealScope(p).size() > 0){return false;} 
+        else { std::cout << p->getName() << " is oom";}
     }
+    std::cout << "oom";
     return true;
 }
  

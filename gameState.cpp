@@ -61,44 +61,42 @@ void GameState::printBoard() {
     std::cout << "  a b c d e f g h" << std::endl;
 }
 
-void GameState::updateAttacking(bool color){
-    if(color){
+void GameState::updateAttacking(bool color) {
+    if (color) {
         white_attacking.clear();
-        white_attacking.shrink_to_fit();
-        for(auto &piece : whitePieces){
+        for (auto& piece : whitePieces) {
+            std::cout << "  checkfree_scope for white piece at: " 
+                      << piece->pos.first << piece->pos.second << std::flush;
             auto scope = piece->checkfree_scope();
-            for( auto pos : scope){
+            std::cout << " -> done (" << scope.size() << " squares)" << std::endl;
+            for (auto pos : scope) {
                 white_attacking.push_back(pos);
             }
         }
-    }else{
+    } else {
         black_attacking.clear();
-        black_attacking.shrink_to_fit();
-        for(auto &piece : blackPieces){
+        for (auto& piece : blackPieces) {
+            std::cout << "  checkfree_scope for black piece at: " 
+                      << piece->pos.first << piece->pos.second << std::flush;
             auto scope = piece->checkfree_scope();
-            for( auto pos : scope){
+            std::cout << " -> done (" << scope.size() << " squares)" << std::endl;
+            for (auto pos : scope) {
                 black_attacking.push_back(pos);
             }
         }
     }
 }
-
-void GameState::updatePieces(bool color){ // this method is needed to update the pieces each of the two players has access.
-    if(color){                            // this triggers on every move to accomodate for captures.
+void GameState::updatePieces(){ // this method is needed to update the pieces each of the two players has access
         whitePieces.clear();
-        whitePieces.shrink_to_fit();
-    }else{
         blackPieces.clear();
-        blackPieces.shrink_to_fit();
-    }
     for (int i = 8; i >= 1; --i) {
         for (char j = 'a'; j <= 'h'; ++j) {
             auto it = board.find({j, i});
-            if (it != board.end() && it->second.get()->color == color){
-                if(color){
-                    whitePieces.push_back(std::move(it->second));
+            if (it != board.end()){
+                if(it->second.get()->color){
+                    whitePieces.push_back(it->second.get());
                 }else {
-                    blackPieces.push_back(std::move(it->second));
+                    blackPieces.push_back(it->second.get());
                 } 
             } 
         }

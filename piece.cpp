@@ -16,12 +16,19 @@ std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope t
             // Pawns attack diagonally (different from movement)
             int direction = color ? 1 : -1;  // white moves up, black down
             // Left diagonal attack
-            if (pos.first > 'a' && pos.second + direction >= 1 && pos.second + direction <= 8) {
-                res.push_back({char(pos.first - 1), pos.second + direction});
+            if (pos.first > 'a' && pos.second + direction > 1 && pos.second + direction <= 8) {
+                auto it = gS->board.find({char(pos.first - 1), pos.second + direction});
+                if(it != gS->board.end() && it->second.get()->color != this->color){
+                    res.push_back({char(pos.first - 1), pos.second + direction});
+                }
+                
             }
             // Right diagonal attack
             if (pos.first < 'h' && pos.second + direction >= 1 && pos.second + direction <= 8) {
-                res.push_back({char(pos.first + 1), pos.second + direction});
+                auto it = gS->board.find({char(pos.first + 1), pos.second + direction});
+                if(it != nullptr && it->second.get()->color != this->color){
+                    res.push_back({char(pos.first + 1), pos.second + direction});
+                }
             }
             break;
 
@@ -47,11 +54,12 @@ std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope t
         }
         case PieceType::Bishop:{
             std::vector<std::pair<int,int>> directions = {{1,1}, {1,-1}, {-1,1}, {-1,-1}};
-            for(auto [df, dr] : directions) {      
+            for(auto [df, dr] : directions) {   
+                char currFile = pos.first;
+                int currRank = pos.second;   
                 // Keep moving in this diagonal direction until hitting board edge or piece
                 while(true) {
-                    char currFile = pos.first;
-                    int currRank = pos.second;
+                    
                     currFile += df;
                     currRank += dr;
                     
@@ -88,9 +96,10 @@ std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope t
             std::vector<std::pair<int,int>> directions = {{1,0}, {0,-1}, {-1,0}, {0,1}};
                 
             for(auto [df,dr] : directions){
+                char currFile = this->pos.first;
+                int  currRank = this->pos.second;
                 while(true){
-                    char currFile = this->pos.first;
-                    int  currRank = this->pos.second;
+                    
                     currFile += df;
                     currRank += dr;
 
@@ -103,7 +112,7 @@ std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope t
                     auto it = gS->board.find(currPos);
                     // if it finds a piece it should consider it capturable but stop there
                     if(it != gS->board.end()) {
-                        res.push_back(currPos);
+                        if(it->second.get()->color != this->color){res.push_back(currPos);}
                         break;
                     }
                     
@@ -135,9 +144,10 @@ std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope t
             case PieceType::Queen:{
                 std::vector<std::pair<int,int>> directions = {{1,0}, {0,-1}, {-1,0}, {0,1}};
                 for( auto [df,dr] : directions){
-                while(true){
                     char currFile = this->pos.first;
                     int  currRank = this->pos.second;
+                while(true){
+                    
                     currFile += df;
                     currRank += dr;
 
@@ -160,9 +170,10 @@ std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope t
                 }
                     directions = {{1,1}, {1,-1}, {-1,1}, {-1,-1}};
                     for(auto [df,dr] : directions){
-                    while(true){
                     char currFile = this->pos.first;
                     int  currRank = this->pos.second;
+                    while(true){
+                    
                     currFile += df;
                     currRank += dr;
 
@@ -175,7 +186,7 @@ std::vector<std::pair<char,int>> Piece::checkfree_scope(){ //theoretical scope t
                     auto it = gS->board.find(currPos);
                     // if it finds a piece it should consider it capturable but stop there
                     if(it != gS->board.end()) {
-                        res.push_back(currPos);
+                        if(it->second.get()->color != this->color){res.push_back(currPos);}
                         break;
                     }
                     
