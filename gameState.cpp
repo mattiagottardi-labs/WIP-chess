@@ -53,7 +53,7 @@ void GameState::printBoard() {
             if (it != board.end()) {
                 std::cout << it->second->getName() << " "; // Print the first letter of the piece name
             } else {
-                std::cout << ". "; // Empty square
+                std::cout << " . "; // Empty square
             }
         }
         std::cout << " " << i << std::endl;

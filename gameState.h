@@ -36,7 +36,6 @@ class GameState { //should keep state and be a reference for all other objects i
 
     void init();
     void printBoard();
-    void wingame();
 
     //helpers:
     bool isEmpty(std::pair<char, int> pos) const {return board.find(pos) == board.end();}

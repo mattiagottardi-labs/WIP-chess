@@ -15,11 +15,42 @@ int main() {
 
     // Initialize board
     game.init();
-    game.printBoard();
 
-    // Example: make a move (if your API supports it)
-    // white.movePiece({'e',2}, {'e',4});
+    Player *current = white;
 
-    std::cout << "Program finished.\n";
+     while (true) {
+        game.printBoard();
+
+        Player::TurnResult result = current->turn();
+
+        switch (result) {
+            case Player::TurnResult::Checkmate:
+                std::cout << "Checkmate! "
+                          << (current->color ? "White" : "Black")
+                          << " loses.\n";
+                return 0;
+
+            case Player::TurnResult::Stalemate:
+                std::cout << "Stalemate. Draw.\n";
+                return 0;
+
+            case Player::TurnResult::Resign:
+                std::cout << (current->color ? "White" : "Black")
+                          << " resigns. "
+                          << (current->color ? "Black" : "White")
+                          << " wins.\n";
+                return 0;
+
+            case Player::TurnResult::Exit:
+                std::cout << "Game ended by user.\n";
+                return 0;
+            case Player::TurnResult::Continue:
+                break;
+            }
+
+        // Switch players
+        current = (current == white ? black : white);
+    }
+
     return 0;
 }

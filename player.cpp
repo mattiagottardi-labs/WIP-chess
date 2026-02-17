@@ -172,13 +172,26 @@ std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
     attacked pieces must be updated
 */
 
-void Player::turn() {
+Player::TurnResult Player::turn() {
+    if(isOutOfMoves() && ga->isInCheck(color)){
+        return TurnResult::Checkmate;
+    }
+    if(isOutOfMoves() && !ga->isInCheck(color)){
+        return TurnResult::Stalemate;
+    }
     std::pair<char,int> pos;
     Piece* piece;
 
-    std::cout << (color ? "White" : "Black") 
-              << " Player's turn: select a piece:\n";
-
+    std::cout << (color ? "White" : "Black") << " Player's turn.\n";
+    std::string stat;
+    std::cout<<"Insert re if you wish to resign: \n";
+    std::cin >> stat;
+    if(stat == "re"){
+        return TurnResult::Resign;
+    }else{
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
     // --- SELECT PIECE ---
     while (true) {
         auto input = val_getPos();
@@ -252,11 +265,11 @@ void Player::turn() {
         }
 
         if (valid) break;
-
         std::cout << "Invalid movement\n";
     }
 
     ga->updateAttacking(color);
+    return TurnResult::Continue;
 }
 
 bool Player::canCastleLeft() {
@@ -332,3 +345,13 @@ void Player::castle(bool left){
     Piece* rook = it2->second.get();
     movePiece(rook,{file + shift, rank});
 }
+
+bool Player::isOutOfMoves() {
+    auto& pieces = color ? ga->whitePieces : ga->blackPieces;
+    for (auto& p : pieces) {
+        Piece* piece = p.get();
+        if (!getRealScope(piece).size() > 0){return false;}
+    }
+    return true;
+}
+ 

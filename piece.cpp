@@ -220,7 +220,7 @@ std::string Piece::getName(){
             break;
         }
         default:{
-            return std::string(". ");
+            return std::string(".");
         }
         break;
     }
