@@ -26,6 +26,7 @@ class Player { // Player only handles game logic, User will do the rest
     Player(GameState* gameState, bool playerColor) : ga(gameState), color(playerColor) {} // constructor to initialize game state pointer and player color 
     Piece* selectPiece(std::pair<char, int> pos);
     std::vector<std::pair<char, int>> getRealScope(Piece* piece);
+    void promote(Piece * piece);
     void movePiece (Piece* piece, std::pair<char,int> newPos);
     bool validateMove(Piece* piece, std::pair<char,int> canPos);
     bool isInCheck();

@@ -125,3 +125,7 @@ bool GameState::isInCheck(bool color){
         return false;
     }
 }
+
+bool GameState::canEnpassant(std::pair<char,int> pos){
+    return pos == EnpassantPos;
+}

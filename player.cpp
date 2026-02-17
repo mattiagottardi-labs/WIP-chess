@@ -8,18 +8,25 @@
 #include "gameState.h"
 #include "piece.h"
 
-std::pair<bool,std::pair<char,int>> val_getPos(){ //validates the input and returns the position
+std::pair<bool,std::pair<char,int>> val_getPos(){
     char x;
-    int y;
+    char y;
     std::cin >> x >> y;
-    if(std::cin.fail() || y > 8 || y < 0 || x < 'a' || x > 'h'){
-        std::cout << "bad input";
+
+    // Check for resign
+    if((x == 'r' && y == 'e') || (x == 'R' && y =='E') || (x == 'R' && y == 'e')){
+        return {true, {'r', 3}};
+    }
+
+    // Validate input
+    if(std::cin.fail() || x < 'a' || x > 'h' || y < '1' || y > '8'){
+        std::cout << "bad input" << std::endl;
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        return {false, {'a',1}};
-    }else{
-        return {true, {x,y}};
+        return {false, {'a', 1}};
     }
+
+    return {true, {x, y - '0'}}; // '1' - '0' = 1, '8' - '0' = 8
 }
 
 Piece* Player::selectPiece(const std::pair<char, int> pos) {
@@ -45,58 +52,84 @@ void Player::promote(std::string newPiece) {
 }
 
 
-void Player::movePiece(Piece* piece, std::pair<char, int> newPos) {
-    // Store old position
-    std::pair<char, int> oldPos = piece->pos;
-    
-    // Check for capture at destination
+void Player::movePiece(Piece* piece, std::pair<char,int> newPos) {
+    std::pair<char,int> oldPos = piece->pos;
+
+    // Check if this is en passant BEFORE moving
+    bool isEnPassant = (piece->type == Piece::PieceType::Pawn && newPos == ga->EnpassantPos);
+    bool isPromotion = (piece->type == Piece::PieceType::Pawn && newPos.second == (color ? 8 : 1));
+    // Check for normal capture at destination
     auto it = ga->board.find(newPos);
     if (it != ga->board.end()) {
-        // Capture enemy piece (erase it)
         ga->board.erase(newPos);
     }
-    
-    // Move the piece (transfer ownership from old to new position)
+
+    // Execute en passant capture
+    if (isEnPassant) {
+        int victimRank = color ? newPos.second - 1 : newPos.second + 1;
+        ga->board.erase({newPos.first, victimRank});
+    }
+
+    if(isPromotion){
+        promote(piece); //changes type to desired one
+    }
+
+    // Moves the piece
     std::unique_ptr<Piece> piecePtr = std::move(ga->board[oldPos]);
-    ga->board.erase(oldPos);  // Remove from old position
-    
-    // Update piece's internal state
+    ga->board.erase(oldPos);
     piecePtr->pos = newPos;
     piecePtr->hasMoved = true;
-    
-    // Place at new position
     ga->board[newPos] = std::move(piecePtr);
-    
+
     // Update king position if moving king
     if (piece->type == Piece::PieceType::King) {
-        if (color) {
-            ga->whiteKingPosition = newPos;
-        } else {
-            ga->blackKingPosition = newPos;
-        }
+        if (color) ga->whiteKingPosition = newPos;
+        else       ga->blackKingPosition = newPos;
     }
-    
-    // Update game state
+
+    // Set en passant square if pawn moved 2 squares
+    if (piece->type == Piece::PieceType::Pawn && 
+        abs(newPos.second - oldPos.second) == 2) {
+        int passedSquare = (oldPos.second + newPos.second) / 2;
+        ga->EnpassantPos = {piece->pos.first, passedSquare};
+    } else {
+        ga->EnpassantPos = {'z', 99};
+    }
+
     ga->updatePieces();
     ga->updateAttacking(this->color);
-    ga->updateAttacking(!this->color);  // Update opponent's attacking too
+    ga->updateAttacking(!this->color);
 }
 
 bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
     auto oldPos = piece->pos;
-
-    // Color checks
-    if (piece->color != this->color) return false; // can't move opponent's piece
-
-    auto destIt = ga->board.find(canPos);
-    if (destIt != ga->board.end() && destIt->second->color == this->color) 
-        return false; // can't capture own piece
-
     bool isKing = (piece->type == Piece::PieceType::King);
     auto& kingPos = color ? ga->whiteKingPosition : ga->blackKingPosition;
     auto savedKingPos = kingPos;
 
-    // Save captured piece
+    // Color checks
+    if (piece->color != this->color) return false;
+    auto destIt = ga->board.find(canPos);
+    if (destIt != ga->board.end() && destIt->second->color == this->color) 
+        return false;
+
+    // Check if this is en passant
+    bool isEnPassant = (piece->type == Piece::PieceType::Pawn && 
+                        canPos == ga->EnpassantPos);
+    std::unique_ptr<Piece> enPassantVictim = nullptr;
+    std::pair<char,int> victimPos;
+
+    if (isEnPassant) {
+        int victimRank = color ? canPos.second - 1 : canPos.second + 1;
+        victimPos = {canPos.first, victimRank};
+        auto victimIt = ga->board.find(victimPos);
+        if (victimIt != ga->board.end()) {
+            enPassantVictim = std::move(victimIt->second);
+            ga->board.erase(victimIt);
+        }
+    }
+
+    // Save captured piece at destination
     std::unique_ptr<Piece> captured = nullptr;
     auto captureIt = ga->board.find(canPos);
     if (captureIt != ga->board.end()) {
@@ -104,10 +137,9 @@ bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
         ga->board.erase(captureIt);
     }
 
-    // Safe find 
+    // Move piece
     auto pieceIt = ga->board.find(oldPos);
     if (pieceIt == ga->board.end()) return false;
-
     std::unique_ptr<Piece> temp = std::move(pieceIt->second);
     ga->board.erase(pieceIt);
     temp->pos = canPos;
@@ -128,6 +160,7 @@ bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
     ga->board[oldPos] = std::move(movedBack);
 
     if (captured) ga->board[canPos] = std::move(captured);
+    if (enPassantVictim) ga->board[victimPos] = std::move(enPassantVictim);
 
     kingPos = savedKingPos;
 
@@ -137,7 +170,6 @@ bool Player::validateMove(Piece* piece, std::pair<char,int> canPos) {
 
     return !inCheck;
 }
-
 
 std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
     std::vector<std::pair<char,int>> candidates;
@@ -149,7 +181,7 @@ std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
         // Diagonal captures — only if enemy piece is present
         for (auto& pos : piece->checkfree_scope()) {
             auto it = ga->board.find(pos);
-            if (it != ga->board.end() && it->second->color != this->color)
+            if ((it != ga->board.end() && it->second->color != this->color) || ga->canEnpassant(pos))
                 candidates.push_back(pos);
         }
 
@@ -217,23 +249,17 @@ Player::TurnResult Player::turn() {
     std::pair<char,int> pos;
     Piece* piece;
 
-    std::cout << (color ? "White" : "Black") << " Player's turn.\n";
-    std::string stat;
-    std::cout<<"Insert ok if you wish to continue, or re if you wish to resign: \n";
-    std::cin >> stat;
-    if(stat == "re" || stat == "resign" || stat == "RESIGN" || stat == "RE"){
-        return TurnResult::Resign;
-    }else{
-        std::cout << "Select a Piece! \n";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    }
+    std::cout << (color ? "White" : "Black") << " Player's turn: \n";
+    std::cout<<"Insert re if you wish to resign or select a piece. \n";
+
     // --- SELECT PIECE ---
     while (true) {
         auto input = val_getPos();
         if (!input.first) continue;
-
+        
         pos = input.second;
+        if(pos == std::make_pair('r', 3)) return TurnResult::Resign;
+        
         piece = selectPiece(pos);
 
         if (!piece) {
@@ -377,10 +403,51 @@ void Player::castle(bool left){
 bool Player::isOutOfMoves() {
     auto& pieces = color ? ga->whitePieces : ga->blackPieces;
     for (auto& p : pieces) {
-        if (getRealScope(p).size() > 0){return false;} 
-        else { std::cout << p->getName() << " is oom";}
+        if (getRealScope(p).size() > 0){return false;}
     }
     std::cout << "oom";
     return true;
 }
- 
+void Player::promote(Piece* piece){
+    char prom;
+    std::cout << "Select Piece to promote to: q for Queen, r for Rook, k for Knight, b for Bishop\n";
+    
+    while(true){
+        std::cin >> prom;
+        if(std::cin.fail()){
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::cout << "Invalid input. Try again: ";
+            continue;
+        }
+        
+        if(prom == 'q' || prom == 'r' || prom == 'k' || prom == 'b'){
+            break;
+        } else {
+            std::cout << "Invalid piece. Enter q, r, k, or b: ";
+        }
+    }
+    
+    // Get the pawn's position before replacing
+    std::pair<char,int> pos = piece->pos;
+    
+    // Determine new piece type
+    Piece::PieceType newType;
+    switch(prom){
+        case 'q': newType = Piece::PieceType::Queen; break;
+        case 'r': newType = Piece::PieceType::Rook; break;
+        case 'k': newType = Piece::PieceType::Knight; break;
+        case 'b': newType = Piece::PieceType::Bishop; break;
+    }
+    
+    // Remove pawn from board
+    ga->board.erase(pos);
+    
+    // Create new piece at same position
+    auto newPiece = std::make_unique<Piece>(newType, color, pos, ga);
+    newPiece->hasMoved = true;
+    ga->board[pos] = std::move(newPiece);
+    
+    // Update piece lists
+    ga->updatePieces();
+}

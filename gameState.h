@@ -33,11 +33,12 @@ class GameState { //should keep state and be a reference for all other objects i
     std::vector<std::pair<char,int>> black_attacking;
     std::pair<char,int> whiteKingPosition;
     std::pair<char,int> blackKingPosition;
-
+    std::pair<char,int> EnpassantPos;
     void init();
     void printBoard();
 
     //helpers:
+    bool canEnpassant(std::pair<char,int> pos);
     bool isEmpty(std::pair<char, int> pos) const {return board.find(pos) == board.end();}
     Piece* getPieceAt(std::pair<char, int> pos);
     void updatePieces();
