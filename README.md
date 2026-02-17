@@ -1,10 +1,9 @@
 ## WIP-chess
-This project aims to become a fully functioning multiplayer chess board to play with your friends. This has been in development for ~8h. I am not rushing and the main objective is to learn object oriented programming in C++ as well as implementing UI.
+This project has gone through a complete rewrite and is now fully working and much simplified. 90% of the code is commented and very easily understandable with the necessary context (knowing how chess works). 
+
+You should be able to compile this and run it with these commands in powershell, after opening the folder:
+g++ -std=c++17 main.cpp gameState.cpp player.cpp piece.cpp -o chess.exe
 
 ## Current state:
 
-So far the logic is 85% there. The pieces know what their scope is and the functions are there to move and kill pieces, as well as to promote pawns. Enpassant and Castling will be implemented soon. The next things to implement are, in order:
-
--missing logic (enpassant, checkmate, stall).
-
--UI
+IT ALL WORKS. it need a UI tho.
