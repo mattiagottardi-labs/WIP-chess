@@ -129,3 +129,62 @@ bool GameState::isInCheck(bool color){
 bool GameState::canEnpassant(std::pair<char,int> pos){
     return pos == EnpassantPos;
 }
+
+void GameState::resetBoard() {
+    // Clear board and piece lists
+    board.clear();
+    whitePieces.clear();
+    blackPieces.clear();
+    white_attacking.clear();
+    black_attacking.clear();
+
+    // Reset king positions
+    whiteKingPosition = {'e', 1};
+    blackKingPosition = {'e', 8};
+
+    // Reset en passant
+    EnpassantPos = {'x', -1};
+
+    // Recreate players (same as init)
+    whitePlayer = std::make_unique<Player>(this, true);
+    blackPlayer = std::make_unique<Player>(this, false);
+
+    // --- WHITE PIECES (rank 1) ---
+    board[{'a', 1}] = std::make_unique<Piece>(Piece::PieceType::Rook,   true, std::make_pair('a', 1), this);
+    board[{'b', 1}] = std::make_unique<Piece>(Piece::PieceType::Knight, true, std::make_pair('b', 1), this);
+    board[{'c', 1}] = std::make_unique<Piece>(Piece::PieceType::Bishop, true, std::make_pair('c', 1), this);
+    board[{'d', 1}] = std::make_unique<Piece>(Piece::PieceType::Queen,  true, std::make_pair('d', 1), this);
+    board[{'e', 1}] = std::make_unique<Piece>(Piece::PieceType::King,   true, std::make_pair('e', 1), this);
+    board[{'f', 1}] = std::make_unique<Piece>(Piece::PieceType::Bishop, true, std::make_pair('f', 1), this);
+    board[{'g', 1}] = std::make_unique<Piece>(Piece::PieceType::Knight, true, std::make_pair('g', 1), this);
+    board[{'h', 1}] = std::make_unique<Piece>(Piece::PieceType::Rook,   true, std::make_pair('h', 1), this);
+
+    // White pawns (rank 2)
+    for (int i = 0; i < 8; i++) {
+        char file = static_cast<char>('a' + i);
+        board[{file, 2}] = std::make_unique<Piece>(Piece::PieceType::Pawn, true, std::make_pair(file, 2), this);
+    }
+
+    // --- BLACK PIECES (rank 8) ---
+    board[{'a', 8}] = std::make_unique<Piece>(Piece::PieceType::Rook,   false, std::make_pair('a', 8), this);
+    board[{'b', 8}] = std::make_unique<Piece>(Piece::PieceType::Knight, false, std::make_pair('b', 8), this);
+    board[{'c', 8}] = std::make_unique<Piece>(Piece::PieceType::Bishop, false, std::make_pair('c', 8), this);
+    board[{'d', 8}] = std::make_unique<Piece>(Piece::PieceType::Queen,  false, std::make_pair('d', 8), this);
+    board[{'e', 8}] = std::make_unique<Piece>(Piece::PieceType::King,   false, std::make_pair('e', 8), this);
+    board[{'f', 8}] = std::make_unique<Piece>(Piece::PieceType::Bishop, false, std::make_pair('f', 8), this);
+    board[{'g', 8}] = std::make_unique<Piece>(Piece::PieceType::Knight, false, std::make_pair('g', 8), this);
+    board[{'h', 8}] = std::make_unique<Piece>(Piece::PieceType::Rook,   false, std::make_pair('h', 8), this);
+
+    // Black pawns (rank 7)
+    for (int i = 0; i < 8; i++) {
+        char file = static_cast<char>('a' + i);
+        board[{file, 7}] = std::make_unique<Piece>(Piece::PieceType::Pawn, false, std::make_pair(file, 7), this);
+    }
+
+    // Rebuild piece vectors
+    updatePieces();
+
+    // Rebuild attacking vectors
+    updateAttacking(true);
+    updateAttacking(false);
+}

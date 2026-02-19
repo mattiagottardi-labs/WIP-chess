@@ -42,6 +42,7 @@ class GameState { //should keep state and be a reference for all other objects i
     bool isEmpty(std::pair<char, int> pos) const {return board.find(pos) == board.end();}
     Piece* getPieceAt(std::pair<char, int> pos);
     void updatePieces();
+    void resetBoard();
     void updateAttacking(bool color); // this should be called at the end of every turn to update the attacking vectors for both players, it should iterate through all pieces and add their scope to the appropriate vector
     bool isInCheck(bool color);
 };

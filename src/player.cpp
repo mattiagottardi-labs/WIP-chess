@@ -44,11 +44,19 @@ void Player::resign() {
     exit(0); // End the game
 }
 
-void Player::promote(std::string newPiece) {
-    // This function should be called when a pawn reaches the opposite end of the board
-    // It should replace the pawn with the new piece specified by newPiece
-    // For simplicity, we will just print a message here
-    std::cout << "Pawn promoted to " << newPiece << "!" << std::endl;
+void Player::promote(Piece* piece, Piece::PieceType promoteTo) {
+    std::pair<char,int> pos = piece->pos;
+    
+    // Remove pawn from board
+    ga->board.erase(pos);
+    
+    // Create new piece at same position
+    auto newPiece = std::make_unique<Piece>(promoteTo, color, pos, ga);
+    newPiece->hasMoved = true;
+    ga->board[pos] = std::move(newPiece);
+    
+    // Update piece lists
+    ga->updatePieces();
 }
 
 
@@ -69,11 +77,6 @@ void Player::movePiece(Piece* piece, std::pair<char,int> newPos) {
         int victimRank = color ? newPos.second - 1 : newPos.second + 1;
         ga->board.erase({newPos.first, victimRank});
     }
-
-    if(isPromotion){
-        promote(piece); //changes type to desired one
-    }
-
     // Moves the piece
     std::unique_ptr<Piece> piecePtr = std::move(ga->board[oldPos]);
     ga->board.erase(oldPos);
@@ -86,7 +89,29 @@ void Player::movePiece(Piece* piece, std::pair<char,int> newPos) {
         if (color) ga->whiteKingPosition = newPos;
         else       ga->blackKingPosition = newPos;
     }
-
+    // Execute castling if king moved 2 squares
+    if (piece->type == Piece::PieceType::King) {
+        int fileDiff = newPos.first - oldPos.first;
+        
+        if (fileDiff == 2) {
+            // Kingside castling - move rook from h to f
+            int rank = color ? 1 : 8;
+            auto rookPtr = std::move(ga->board[{'h', rank}]);
+            ga->board.erase({'h', rank});
+            rookPtr->pos = {'f', rank};
+            rookPtr->hasMoved = true;
+            ga->board[{'f', rank}] = std::move(rookPtr);
+        }
+        else if (fileDiff == -2) {
+            // Queenside castling - move rook from a to d
+            int rank = color ? 1 : 8;
+            auto rookPtr = std::move(ga->board[{'a', rank}]);
+            ga->board.erase({'a', rank});
+            rookPtr->pos = {'d', rank};
+            rookPtr->hasMoved = true;
+            ga->board[{'d', rank}] = std::move(rookPtr);
+        }
+    }
     // Set en passant square if pawn moved 2 squares
     if (piece->type == Piece::PieceType::Pawn && 
         abs(newPos.second - oldPos.second) == 2) {
@@ -177,19 +202,14 @@ std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
 
     if (piece->type == Piece::PieceType::Pawn) {
         int direction = color ? 1 : -1;
-
-        // Diagonal captures — only if enemy piece is present
         for (auto& pos : piece->checkfree_scope()) {
             auto it = ga->board.find(pos);
             if ((it != ga->board.end() && it->second->color != this->color) || ga->canEnpassant(pos))
                 candidates.push_back(pos);
         }
-
-        // One square forward
         std::pair<char,int> oneForward = {piece->pos.first, piece->pos.second + direction};
         if (oneForward.second >= 1 && oneForward.second <= 8 && ga->isEmpty(oneForward)) {
             candidates.push_back(oneForward);
-            // Two squares forward
             if (!piece->hasMoved) {
                 std::pair<char,int> twoForward = {piece->pos.first, piece->pos.second + (2 * direction)};
                 if (twoForward.second >= 1 && twoForward.second <= 8 && ga->isEmpty(twoForward))
@@ -197,7 +217,6 @@ std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
             }
         }
     } else {
-        // Non-pawns: filter out squares occupied by friendly pieces
         for (auto& pos : piece->checkfree_scope()) {
             auto it = ga->board.find(pos);
             if (it == ga->board.end() || it->second->color != this->color)
@@ -205,8 +224,20 @@ std::vector<std::pair<char,int>> Player::getRealScope(Piece* piece) {
         }
     }
 
-    // Filter out moves that leave own king in check
-    for (auto& pos : candidates) {
+    // ADD CASTLING MOVES HERE - BEFORE VALIDATION
+    if (piece->type == Piece::PieceType::King && !piece->hasMoved) {
+        if (canCastleRight()) {
+            int rank = color ? 1 : 8;
+            candidates.push_back({'g', rank});
+        }
+        if (canCastleLeft()) {
+            int rank = color ? 1 : 8;
+            candidates.push_back({'c', rank});
+        }
+    }
+
+    // NOW VALIDATE ALL CANDIDATES INCLUDING CASTLING
+    for (auto& pos : candidates) {  
         if (validateMove(piece, pos))
             legal.push_back(pos);
     }
@@ -407,47 +438,4 @@ bool Player::isOutOfMoves() {
     }
     std::cout << "oom";
     return true;
-}
-void Player::promote(Piece* piece){
-    char prom;
-    std::cout << "Select Piece to promote to: q for Queen, r for Rook, k for Knight, b for Bishop\n";
-    
-    while(true){
-        std::cin >> prom;
-        if(std::cin.fail()){
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Invalid input. Try again: ";
-            continue;
-        }
-        
-        if(prom == 'q' || prom == 'r' || prom == 'k' || prom == 'b'){
-            break;
-        } else {
-            std::cout << "Invalid piece. Enter q, r, k, or b: ";
-        }
-    }
-    
-    // Get the pawn's position before replacing
-    std::pair<char,int> pos = piece->pos;
-    
-    // Determine new piece type
-    Piece::PieceType newType;
-    switch(prom){
-        case 'q': newType = Piece::PieceType::Queen; break;
-        case 'r': newType = Piece::PieceType::Rook; break;
-        case 'k': newType = Piece::PieceType::Knight; break;
-        case 'b': newType = Piece::PieceType::Bishop; break;
-    }
-    
-    // Remove pawn from board
-    ga->board.erase(pos);
-    
-    // Create new piece at same position
-    auto newPiece = std::make_unique<Piece>(newType, color, pos, ga);
-    newPiece->hasMoved = true;
-    ga->board[pos] = std::move(newPiece);
-    
-    // Update piece lists
-    ga->updatePieces();
 }
